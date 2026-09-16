@@ -29,6 +29,9 @@ export default function Navbar() {
         <div className="flex items-center gap-2">
           {!user ? (
             <>
+              <Link to="/products" className="hidden sm:inline-flex px-5 py-2.5 rounded-full text-[14px] font-semibold text-[#4a5f78] hover:bg-[#f4f7fb] transition">
+                Products
+              </Link>
               <Link to="/login" className="hidden sm:inline-flex px-5 py-2.5 rounded-full text-[14px] font-semibold text-[#4a5f78] hover:bg-[#f4f7fb] transition">
                 Login
               </Link>
@@ -40,6 +43,7 @@ export default function Navbar() {
             <>
               <span className="hidden sm:inline text-[14px] text-[#7c9cb6] mr-2 truncate max-w-[160px]">{user.email}</span>
               <Link to="/home" className="hidden sm:inline-flex px-4 py-2 rounded-full text-[14px] font-semibold text-[#4a5f78] hover:bg-[#f4f7fb] transition">Home</Link>
+              <Link to="/products" className="hidden sm:inline-flex px-4 py-2 rounded-full text-[14px] font-semibold text-[#4a5f78] hover:bg-[#f4f7fb] transition">Products</Link>
               <button
                 onClick={handleLogout}
                 className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#8da4be] text-white text-[14px] font-semibold hover:bg-[#7d94ad] active:scale-[0.98] transition"
