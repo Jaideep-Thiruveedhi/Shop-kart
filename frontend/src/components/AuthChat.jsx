@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/axios';
+import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 // ──────────────────────────────────────────────────────────
@@ -175,7 +175,7 @@ export default function AuthChat() {
       setUser(user);
       setIsTyping(false);
       pushBot("You're in! Redirecting you now \u2728");
-      setTimeout(() => navigate('/'), 700);
+      setTimeout(() => navigate('/home'), 700);
     } catch (err) {
       setIsTyping(false);
       const status = err.response?.status;
@@ -215,7 +215,7 @@ export default function AuthChat() {
         setUser(user);
         setIsTyping(false);
         pushBot("You're all set! Welcome to ShopKart \uD83C\uDF89");
-        setTimeout(() => navigate('/'), 700);
+        setTimeout(() => navigate('/home'), 700);
       } catch {
         setIsTyping(false);
         pushBot('Account created! Now please sign in with your new credentials.');
