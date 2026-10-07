@@ -11,8 +11,21 @@ const orderRoutes = require('./routes/order.routes');
 
 const app = express();
 
+// Cross-origin allow-list for the React dev server.
+//
+// 5173 = Vite's default dev port, 5199 = the port this project actually runs on,
+// 3000 = the backend's own origin (useful when the SPA is served from here).
+//
+// Why this list matters so much: when a browser calls the API from an origin
+// that is NOT listed, the request still reaches this server and still returns
+// 200 with the correct JSON — but the response arrives without an
+// Access-Control-Allow-Origin header, so the browser refuses to hand it to
+// JavaScript. axios then rejects with a bare "Network Error" (err.response is
+// undefined), and a page like Products.jsx shows its generic error state while
+// the DevTools Network tab still displays a perfectly successful 200. Always
+// add the dev port here when the frontend port changes.
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: ['http://localhost:5173', 'http://localhost:5199', 'http://localhost:3000'],
   credentials: true,
 }));
 app.use(express.json());

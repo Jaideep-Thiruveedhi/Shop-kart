@@ -16,7 +16,7 @@ import { useAuth } from './AuthContext';
 const CartContext = createContext(null);
 
 export function CartProvider({ children }) {
-  const { user } = useAuth();
+  const { user, initialising } = useAuth();
 
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +40,10 @@ export function CartProvider({ children }) {
     );
 
   const refreshCart = useCallback(async () => {
+    // Wait until the session is resolved. Acting on a not-yet-known `user`
+    // would wipe the cart of a signed-in customer on every page refresh.
+    if (initialising) return;
+
     if (!user) {
       if (mounted.current) {
         setCartItems([]);
@@ -60,10 +64,10 @@ export function CartProvider({ children }) {
     } finally {
       if (mounted.current) setLoading(false);
     }
-  }, [user]);
+  }, [user, initialising]);
 
-  // Fetch on login, and wipe on logout so the next customer never sees the
-  // previous one's cart in the UI.
+  // Fetch once the session is known, and wipe on logout so the next customer
+  // never sees the previous one's cart in the UI.
   useEffect(() => {
     refreshCart();
   }, [refreshCart]);

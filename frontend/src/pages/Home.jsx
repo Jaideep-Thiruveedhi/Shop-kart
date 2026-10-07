@@ -9,42 +9,37 @@ export default function Home() {
   const [loading, setLoading] = useState(!user);
   const [error, setError] = useState('');
 
+  // AuthContext already hydrates the session on mount, so `user` is normally
+  // present by the time we render. Re-fetching here would be a redundant
+  // round-trip on every visit, so only do it when the context is somehow empty.
   useEffect(() => {
+    if (user) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
-    async function load() {
-      // Always fetch fresh from /customers/me — don't trust stale client state
-      // HttpOnly cookie is sent automatically via withCredentials
+    (async () => {
       try {
         const { data } = await api.get('/customers/me');
         const u = data.customer ?? data;
-        if (!cancelled) {
-          if (u && (u._id || u.email)) {
-            setUser(u);
-          } else {
-            setUser(null);
-            navigate('/login', { replace: true });
-          }
-        }
+        if (cancelled) return;
+        if (u && (u._id || u.email)) setUser(u);
+        else navigate('/login', { replace: true });
       } catch (err) {
-        if (!cancelled) {
-          const status = err.response?.status;
-          if (status === 401) {
-            setUser(null);
-            navigate('/login', { replace: true });
-          } else {
-            setError('Failed to load profile. Please try again.');
-          }
+        if (cancelled) return;
+        if (err.response?.status === 401) {
+          setUser(null);
+          navigate('/login', { replace: true });
+        } else {
+          setError('Failed to load profile. Please try again.');
         }
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }
-
-    // If context already has user, no need to fetch; but refresh anyway to stay consistent
-    if (!user) load();
-    else setLoading(false);
-
-    return () => { cancelled = true; };
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [user, setUser, navigate]);
 
   if (loading) {

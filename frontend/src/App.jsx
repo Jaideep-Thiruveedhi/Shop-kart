@@ -15,8 +15,20 @@ import OrderSuccess from './pages/OrderSuccess';
 import AuthChat from './components/AuthChat';
 
 function RequireAuth({ children }) {
-  const { user } = useAuth();
+  const { user, initialising } = useAuth();
   const location = useLocation();
+
+  // While the session is still being resolved we must NOT redirect: the JWT is
+  // in an HttpOnly cookie, so "no user yet" means "not asked yet". Redirecting
+  // here would bounce a signed-in user to /login on every refresh.
+  if (initialising) {
+    return (
+      <div className="min-h-[calc(100vh-64px)] bg-[#f4f7fb] flex items-center justify-center">
+        <div className="w-10 h-10 border-[3px] border-[#e6eef7] border-t-[#5a8dee] rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   // Remember where the customer was heading so Login can return them there
   // instead of dumping them on the home page.
   if (!user) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
@@ -24,7 +36,16 @@ function RequireAuth({ children }) {
 }
 
 function PublicOnly({ children }) {
-  const { user } = useAuth();
+  const { user, initialising } = useAuth();
+  // Same reasoning as RequireAuth: don't bounce an already-signed-in user to
+  // /home before the session check has finished.
+  if (initialising) {
+    return (
+      <div className="min-h-[calc(100vh-64px)] bg-[#f4f7fb] flex items-center justify-center">
+        <div className="w-10 h-10 border-[3px] border-[#e6eef7] border-t-[#5a8dee] rounded-full animate-spin" />
+      </div>
+    );
+  }
   if (user) return <Navigate to="/home" replace />;
   return children;
 }

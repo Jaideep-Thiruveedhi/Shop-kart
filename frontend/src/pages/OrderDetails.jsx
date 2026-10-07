@@ -58,7 +58,7 @@ export default function OrderDetails() {
           to="/orders"
           className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#5a8dee] hover:underline mb-6"
         >
-          â† Back to My Orders
+          ← Back to My Orders
         </Link>
         {children}
       </div>
@@ -77,7 +77,7 @@ export default function OrderDetails() {
     return shell(
       <div className="bg-white rounded-[24px] border border-red-200 p-10 text-center">
         <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto text-2xl">
-          âš ï¸
+          ⚠️
         </div>
         <p className="mt-4 text-[16px] font-bold text-[#4a5f78]">{error}</p>
         <button
@@ -121,7 +121,7 @@ export default function OrderDetails() {
           )}
         </div>
 
-        {/* Items â€” NOTE: prices come from the order SNAPSHOT, not the live
+        {/* Items — NOTE: prices come from the order SNAPSHOT, not the live
             Product. A later price change must not rewrite purchase history. */}
         <div className="bg-white rounded-[24px] border border-[#eef3f9] p-6">
           <h2 className="text-[16px] font-bold text-[#4a5f78]">
@@ -156,12 +156,12 @@ export default function OrderDetails() {
                       {item.name}
                     </Link>
                     <p className="text-[13px] text-[#7c9cb6]">
-                      â‚¹{item.price.toLocaleString('en-IN')} Ã— {item.quantity}
+                      ₹{item.price.toLocaleString('en-IN')} × {item.quantity}
                     </p>
                   </div>
                 </div>
                 <p className="text-[15px] font-bold text-[#4a5f78] shrink-0">
-                  â‚¹{(item.price * item.quantity).toLocaleString('en-IN')}
+                  ₹{(item.price * item.quantity).toLocaleString('en-IN')}
                 </p>
               </li>
             ))}
@@ -170,7 +170,7 @@ export default function OrderDetails() {
           <div className="mt-5 pt-5 border-t border-[#eef3f9] flex items-baseline justify-between">
             <span className="text-[15px] font-bold text-[#4a5f78]">Total Amount</span>
             <span className="text-[24px] font-extrabold tracking-tight text-[#4a5f78]">
-              â‚¹{order.totalAmount.toLocaleString('en-IN')}
+              ₹{order.totalAmount.toLocaleString('en-IN')}
             </span>
           </div>
         </div>
@@ -183,7 +183,7 @@ export default function OrderDetails() {
             <br />
             {addressLine1}
             <br />
-            {city}, {state} â€” {pincode}
+            {city}, {state} — {pincode}
             <br />
             <span className="text-[#4a5f78]">{phone}</span>
           </address>
@@ -204,7 +204,7 @@ export default function OrderDetails() {
           </div>
         )}
 
-        {/* BONUS â€” dev-only status progression, mirrors PATCH /orders/:id/status */}
+        {/* BONUS — dev-only status progression, mirrors PATCH /orders/:id/status */}
         {order.paymentStatus === 'PAID' && order.status !== 'DELIVERED' && (
           <div className="bg-white rounded-[24px] border border-[#eef3f9] p-6">
             <h2 className="text-[16px] font-bold text-[#4a5f78]">Advance Status (demo)</h2>

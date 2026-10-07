@@ -12,6 +12,21 @@ function isValidObjectId(id) {
   return mongoose.Types.ObjectId.isValid(id);
 }
 
+// Normalise a phone number to its bare 10-digit national form.
+// Spaces and dashes are always dropped. A country code is only stripped when
+// doing so leaves exactly 10 digits — an unconditional `replace(/^91/, '')`
+// would mangle legitimate numbers that merely START with 91 (e.g. 9123456780),
+// making them impossible to check out with.
+function normalizePhone(raw) {
+  let digits = raw.replace(/[\s-]/g, '');
+  if (digits.startsWith('+91') && digits.length === 13) {
+    digits = digits.slice(3);
+  } else if (digits.startsWith('91') && digits.length === 12) {
+    digits = digits.slice(2);
+  }
+  return digits;
+}
+
 // Server-side validation of the shipping block. Runs BEFORE any DB write or
 // Razorpay call so a bad address never creates a half-finished order.
 function validateShippingAddress(shippingAddress) {
@@ -29,7 +44,7 @@ function validateShippingAddress(shippingAddress) {
   }
 
   // Accept +91 / spaces / dashes, then require the 10-digit national number.
-  const phoneDigits = cleaned.phone.replace(/[\s-]/g, '').replace(/^(\+91|91)/, '');
+  const phoneDigits = normalizePhone(cleaned.phone);
   if (!PHONE_RE.test(phoneDigits)) {
     return { ok: false, message: 'Phone must be a valid 10-digit number' };
   }

@@ -35,7 +35,7 @@ export default function OrderSuccess() {
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-[32px] border border-[#eef3f9] p-8 sm:p-10 text-center">
           <div className="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center mx-auto text-4xl">
-            âœ…
+            ✅
           </div>
 
           <h1 className="mt-5 text-[24px] font-extrabold tracking-tight text-[#4a5f78]">
@@ -48,7 +48,7 @@ export default function OrderSuccess() {
           <div className="mt-7 space-y-3 text-left">
             <Row label="Order ID" value={<span className="font-mono">#{id.slice(-10).toUpperCase()}</span>} />
             {order && <Row label="Placed on" value={formatDate(order.createdAt)} />}
-            {order && <Row label="Total" value={`â‚¹${order.totalAmount.toLocaleString('en-IN')}`} bold />}
+            {order && <Row label="Total" value={`₹${order.totalAmount.toLocaleString('en-IN')}`} bold />}
             {order && (
               <Row label="Status" value={<OrderStatusBadge status={order.status} />} />
             )}
@@ -63,7 +63,7 @@ export default function OrderSuccess() {
           {/* Proves the cart was cleared in BOTH places without a refresh. */}
           {cartItems.length === 0 && (
             <p className="mt-6 rounded-2xl bg-emerald-50 px-4 py-3 text-[13px] font-semibold text-emerald-700">
-              Your cart has been cleared â€” see the Navbar count drop to Cart (0).
+              Your cart has been cleared — see the Navbar count drop to Cart (0).
             </p>
           )}
 
@@ -89,7 +89,7 @@ export default function OrderSuccess() {
           </div>
 
           {loading && (
-            <p className="mt-5 text-[12px] text-[#7c9cb6]">Loading order summaryâ€¦</p>
+            <p className="mt-5 text-[12px] text-[#7c9cb6]">Loading order summary…</p>
           )}
         </div>
       </div>

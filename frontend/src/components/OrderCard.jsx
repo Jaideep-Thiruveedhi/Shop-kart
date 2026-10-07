@@ -34,11 +34,11 @@ export default function OrderCard({ order }) {
                 />
               )}
               <span className="truncate text-[#4a5f78]">
-                {item.name} <span className="text-[#7c9cb6]">Ã— {item.quantity}</span>
+                {item.name} <span className="text-[#7c9cb6]">× {item.quantity}</span>
               </span>
             </span>
             <span className="font-semibold text-[#4a5f78] shrink-0">
-              â‚¹{(item.price * item.quantity).toLocaleString('en-IN')}
+              ₹{(item.price * item.quantity).toLocaleString('en-IN')}
             </span>
           </li>
         ))}
@@ -46,11 +46,11 @@ export default function OrderCard({ order }) {
 
       <div className="mt-4 pt-4 border-t border-[#eef3f9] flex items-center justify-between gap-3">
         <p className="text-[13px] text-[#7c9cb6]">
-          {order.items.length} product{order.items.length === 1 ? '' : 's'} Â· {totalUnits} unit
+          {order.items.length} product{order.items.length === 1 ? '' : 's'} · {totalUnits} unit
           {totalUnits === 1 ? '' : 's'}
         </p>
         <p className="text-[20px] font-extrabold tracking-tight text-[#4a5f78]">
-          â‚¹{order.totalAmount.toLocaleString('en-IN')}
+          ₹{order.totalAmount.toLocaleString('en-IN')}
         </p>
       </div>
 

@@ -1,10 +1,16 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import api from '../services/api';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+
+  // `initialising` covers the very first render only. The JWT lives in an
+  // HttpOnly cookie, so React cannot know who is signed in until it asks the
+  // backend. Without this flag the guard would treat "not asked yet" as "not
+  // logged in" and redirect a perfectly valid session to /login on every refresh.
+  const [initialising, setInitialising] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const fetchMe = useCallback(async () => {
@@ -22,6 +28,20 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // Hydrate the session on mount. Without this, `user` stays null until the
+  // user logs in again in this tab, and every hard refresh / deep link to a
+  // protected route would bounce to /login despite a valid cookie.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      await fetchMe();
+      if (!cancelled) setInitialising(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchMe]);
+
   const logout = useCallback(async () => {
     try {
       await api.post('/customers/logout');
@@ -33,7 +53,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, setUser, loading, setLoading, fetchMe, logout }}>
+    <AuthContext.Provider value={{ user, setUser, loading, setLoading, initialising, fetchMe, logout }}>
       {children}
     </AuthContext.Provider>
   );

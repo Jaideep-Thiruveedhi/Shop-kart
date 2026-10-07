@@ -12,6 +12,20 @@ const INITIAL = {
 const PHONE_RE = /^[0-9]{10}$/;
 const PINCODE_RE = /^[0-9]{6}$/;
 
+// Normalise to the bare 10-digit national number. A country code is stripped
+// only when that leaves exactly 10 digits, so legitimate numbers that merely
+// START with 91 (e.g. 9123456780) keep their leading digits. Mirrors
+// normalizePhone() in backend/controllers/order.controller.js.
+function normalizePhone(raw) {
+  let digits = raw.replace(/[\s-]/g, '');
+  if (digits.startsWith('+91') && digits.length === 13) {
+    digits = digits.slice(3);
+  } else if (digits.startsWith('91') && digits.length === 12) {
+    digits = digits.slice(2);
+  }
+  return digits;
+}
+
 // Mirrors backend/controllers/order.controller.js validateShippingAddress().
 // Validating here is a UX affordance, NOT a security control — the server
 // re-validates every field because a client can be bypassed.
@@ -24,7 +38,7 @@ function validateField(field, rawValue) {
     case 'fullName':
       return value.length >= 2 ? '' : 'Full name must be at least 2 characters';
     case 'phone': {
-      const digits = value.replace(/[\s-]/g, '').replace(/^(\+91|91)/, '');
+      const digits = normalizePhone(value);
       if (!/^[0-9]+$/.test(digits)) return 'Phone must contain digits only';
       return PHONE_RE.test(digits) ? '' : 'Phone must be a valid 10-digit number';
     }
@@ -92,10 +106,7 @@ export default function CheckoutForm({ onSubmit, submitting, disabled }) {
     // Submit the normalised values (trimmed phone/pincode) so the address the
     // server stores matches what we validated.
     const payload = Object.fromEntries(
-      Object.entries(values).map(([k, v]) => [
-        k,
-        k === 'phone' ? v.trim().replace(/[\s-]/g, '').replace(/^(\+91|91)/, '') : v.trim(),
-      ]),
+      Object.entries(values).map(([k, v]) => [k, k === 'phone' ? normalizePhone(v.trim()) : v.trim()]),
     );
 
     onSubmit(payload);
