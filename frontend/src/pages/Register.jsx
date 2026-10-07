@@ -2,6 +2,29 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
+// Defined OUTSIDE Register so its identity is stable across renders.
+// Defining it inside the component creates a new component type on every
+// keystroke, which makes React unmount/remount the <input> and steals focus
+// after typing a single character.
+function Field({ label, name, type = 'text', placeholder, autoComplete, value, error, onChange }) {
+  return (
+    <div>
+      <label htmlFor={name} className="block text-[13px] font-semibold text-[#4a5f78] mb-1.5">{label}</label>
+      <input
+        id={name}
+        name={name}
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        className={`w-full rounded-full bg-[#f4f7fb] border px-5 py-3.5 text-[15px] text-[#4a5f78] placeholder:text-[#7c9cb6]/60 focus:outline-none focus:ring-2 focus:ring-[#5a8dee]/30 transition ${error ? 'border-red-300 focus:border-red-400' : 'border-[#e6eef7] focus:border-[#5a8dee]/40'}`}
+      />
+      {error && <p className="mt-1.5 text-[13px] text-red-500 ml-3">{error}</p>}
+    </div>
+  );
+}
+
 export default function Register() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ fullName: '', email: '', password: '', phone: '' });
@@ -54,22 +77,7 @@ export default function Register() {
     }
   };
 
-  const Field = ({ label, name, type = 'text', placeholder, autoComplete }) => (
-    <div>
-      <label htmlFor={name} className="block text-[13px] font-semibold text-[#4a5f78] mb-1.5">{label}</label>
-      <input
-        id={name}
-        name={name}
-        type={type}
-        value={form[name]}
-        onChange={handleChange}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-        className={`w-full rounded-full bg-[#f4f7fb] border px-5 py-3.5 text-[15px] text-[#4a5f78] placeholder:text-[#7c9cb6]/60 focus:outline-none focus:ring-2 focus:ring-[#5a8dee]/30 transition ${errors[name] ? 'border-red-300 focus:border-red-400' : 'border-[#e6eef7] focus:border-[#5a8dee]/40'}`}
-      />
-      {errors[name] && <p className="mt-1.5 text-[13px] text-red-500 ml-3">{errors[name]}</p>}
-    </div>
-  );
+  const FieldProps = { onChange: handleChange };
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-[#f4f7fb] flex items-center justify-center px-4 py-10">
@@ -85,10 +93,10 @@ export default function Register() {
         )}
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
-          <Field label="Full Name" name="fullName" placeholder="John Doe" autoComplete="name" />
-          <Field label="Email" name="email" type="email" placeholder="you@example.com" autoComplete="email" />
-          <Field label="Password" name="password" type="password" placeholder="At least 6 characters" autoComplete="new-password" />
-          <Field label="Phone Number" name="phone" type="tel" placeholder="+91 98765 43210" autoComplete="tel" />
+          <Field label="Full Name" name="fullName" placeholder="John Doe" autoComplete="name" value={form.fullName} error={errors.fullName} {...FieldProps} />
+          <Field label="Email" name="email" type="email" placeholder="you@example.com" autoComplete="email" value={form.email} error={errors.email} {...FieldProps} />
+          <Field label="Password" name="password" type="password" placeholder="At least 6 characters" autoComplete="new-password" value={form.password} error={errors.password} {...FieldProps} />
+          <Field label="Phone Number" name="phone" type="tel" placeholder="+91 98765 43210" autoComplete="tel" value={form.phone} error={errors.phone} {...FieldProps} />
 
           <button
             type="submit"

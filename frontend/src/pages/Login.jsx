@@ -12,6 +12,8 @@ export default function Login() {
   const [apiError, setApiError] = useState('');
   const [loading, setLoading] = useState(false);
   const registered = location.state?.registered;
+  // Set by the RequireAuth guard when a protected page bounces the visitor here.
+  const redirectTo = location.state?.from ?? '/home';
 
   const validate = () => {
     const e = {};
@@ -44,7 +46,7 @@ export default function Login() {
       const { data } = await api.get('/customers/me');
       const u = data.customer ?? data;
       setUser(u);
-      navigate('/home', { replace: true });
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       const status = err.response?.status;
       if (status === 401) setApiError('Invalid Credentials');

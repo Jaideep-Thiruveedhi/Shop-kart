@@ -1,12 +1,25 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
+import useWishlistAction from '../hooks/useWishlistAction';
 
 export default function ProductDetails() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { addToCart, isPending, quantityOf } = useCart();
+
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
+
+  const { saved, saving: wishSaving, error: wishError, toggle } = useWishlistAction(
+    id,
+    Boolean(user),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -55,6 +68,29 @@ export default function ProductDetails() {
 
   const { name, description, price, category, image, stock } = product;
 
+  const cartSaving = isPending(id);
+  const inCart = quantityOf(id) > 0;
+  const rowError = wishError || actionError;
+
+  const requireLogin = () => {
+    if (user) return true;
+    navigate('/login');
+    return false;
+  };
+
+  const handleAddToCart = async () => {
+    if (!requireLogin()) return;
+    setActionError('');
+    const result = await addToCart(id);
+    if (!result.ok) setActionError(result.message);
+  };
+
+  const handleWishlist = () => {
+    if (!requireLogin()) return;
+    setActionError('');
+    toggle();
+  };
+
   return (
     <div className="min-h-[calc(100vh-64px)] bg-[#f4f7fb] px-4 py-8">
       <div className="max-w-5xl mx-auto">
@@ -87,14 +123,49 @@ export default function ProductDetails() {
               </span>
             </div>
 
-            <button
-              // UI only — cart in Lab 04
-              className="mt-8 w-full rounded-full bg-[#8da4be] text-white font-semibold py-4 shadow-[0_8px_20px_rgba(141,164,190,0.35)] hover:bg-[#7d94ad] active:scale-[0.99] transition disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={stock === 0}
-              onClick={() => alert('Cart coming in Lab 04 🛒')}
-            >
-              {stock === 0 ? 'Out of Stock' : 'Add to Cart'}
-            </button>
+            <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                onClick={handleAddToCart}
+                disabled={stock === 0 || cartSaving}
+                className="w-full rounded-full bg-[#8da4be] text-white font-semibold py-4 shadow-[0_8px_20px_rgba(141,164,190,0.35)] hover:bg-[#7d94ad] active:scale-[0.99] transition disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                {stock === 0
+                  ? 'Out of Stock'
+                  : cartSaving
+                    ? 'Adding…'
+                    : inCart
+                      ? `Add Another (${quantityOf(id)} in cart)`
+                      : 'Add to Cart'}
+              </button>
+
+              <button
+                onClick={handleWishlist}
+                disabled={wishSaving}
+                aria-pressed={saved}
+                className={`w-full rounded-full font-semibold py-4 border transition active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed ${
+                  saved
+                    ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100'
+                    : 'border-[#e6edf5] text-[#4a5f78] hover:bg-[#f4f7fb]'
+                }`}
+              >
+                {wishSaving ? 'Saving…' : saved ? '♥ Remove from Wishlist' : '♡ Add to Wishlist'}
+              </button>
+            </div>
+
+            {inCart && (
+              <Link
+                to="/cart"
+                className="mt-3 block text-center text-[13px] font-semibold text-[#5a8dee] hover:underline"
+              >
+                Go to Cart →
+              </Link>
+            )}
+
+            {rowError && (
+              <p role="alert" className="mt-4 text-center text-[13px] font-semibold text-red-600">
+                {rowError}
+              </p>
+            )}
 
             <p className="mt-3 text-center text-[12px] text-[#7c9cb6]">Fetched via <code className="bg-[#f4f7fb] px-1.5 py-0.5 rounded border border-[#eef3f9]">GET /products/:id</code></p>
           </div>

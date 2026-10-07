@@ -1,10 +1,13 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const mongoose = require('mongoose');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const customerRoutes = require('./routes/customer.routes');
 const productRoutes = require('./routes/product.routes');
+const wishlistRoutes = require('./routes/wishlist.routes');
+const cartRoutes = require('./routes/cart.routes');
+const orderRoutes = require('./routes/order.routes');
 
 const app = express();
 
@@ -16,6 +19,10 @@ app.use(express.json());
 app.use(cookieParser());
 app.use('/customers', customerRoutes);
 app.use('/products', productRoutes);
+// Lab 04-06: all three routers carry their own `authenticate` middleware.
+app.use('/wishlist', wishlistRoutes);
+app.use('/cart', cartRoutes);
+app.use('/orders', orderRoutes);
 
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/shopkart';

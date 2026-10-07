@@ -6,7 +6,7 @@ import axios from 'axios';
 // Without this, POST /customers/login succeeds but cookie is dropped,
 // so GET /customers/me will always 401.
 const api = axios.create({
-  baseURL: 'http://localhost:3000',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 });

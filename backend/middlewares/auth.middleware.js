@@ -3,7 +3,15 @@ const Customer = require('../models/customer.model');
 
 async function authenticate(req, res, next) {
   try {
-    const token = req.cookies.token;
+    // Lab 02 set JWT in HttpOnly cookie; Lab 04 spec shows Authorization: Bearer.
+    // Support both so Postman (header) and the React app (cookie + withCredentials) work.
+    let token = req.cookies.token;
+    if (!token) {
+      const header = req.headers.authorization;
+      if (header && header.startsWith('Bearer ')) {
+        token = header.split(' ')[1];
+      }
+    }
 
     if (!token) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
