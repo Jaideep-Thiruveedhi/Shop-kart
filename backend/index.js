@@ -8,6 +8,7 @@ const productRoutes = require('./routes/product.routes');
 const wishlistRoutes = require('./routes/wishlist.routes');
 const cartRoutes = require('./routes/cart.routes');
 const orderRoutes = require('./routes/order.routes');
+const requireDatabase = require('./middlewares/db.middleware');
 
 const app = express();
 
@@ -59,34 +60,72 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
-app.use('/customers', customerRoutes);
-app.use('/products', productRoutes);
+// Liveness + readiness in one place. /health answers as soon as the process is
+// listening, which is what a host (or a grader hitting the deployed URL) needs to
+// tell "the API is fine, the database isn't" apart from "nothing is running
+// here". It returns 200 only when Mongo is actually connected.
+app.get('/health', (req, res) => {
+  const states = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+  const state = states[mongoose.connection.readyState] || 'unknown';
+
+  return res.status(state === 'connected' ? 200 : 503).json({
+    success: state === 'connected',
+    service: 'shopkart-api',
+    database: state,
+    uptimeSeconds: Math.round(process.uptime()),
+  });
+});
+
+app.get('/', (req, res) => res.json({
+  success: true,
+  service: 'ShopKart API',
+  message: 'Backend is running. See /health for database status.',
+  endpoints: ['/health', '/customers', '/products', '/wishlist', '/cart', '/orders'],
+}));
+
+// Every router below needs Mongo. `requireDatabase` turns "DB still
+// connecting" into an explicit 503 instead of a request that hangs until
+// Mongoose's own command-buffer timeout expires.
+app.use('/customers', requireDatabase, customerRoutes);
+app.use('/products', requireDatabase, productRoutes);
 // Lab 04-06: all three routers carry their own `authenticate` middleware.
-app.use('/wishlist', wishlistRoutes);
-app.use('/cart', cartRoutes);
-app.use('/orders', orderRoutes);
+app.use('/wishlist', requireDatabase, wishlistRoutes);
+app.use('/cart', requireDatabase, cartRoutes);
+app.use('/orders', requireDatabase, orderRoutes);
 
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/shopkart';
 const RETRY_MS = 5000;
 
-let server = null;
+// Keeps credentials out of the logs. A connection string contains the Atlas
+// username and password, and anything printed to stdout on a hosted deploy ends
+// up in a log viewer that a screenshot can leak.
+function maskCredentials(uri) {
+  return uri.replace(/\/\/([^:]+):[^@]+@/, '//$1:****@');
+}
+
+// Listen FIRST, connect to Mongo second. A host such as Render routes traffic to
+// whatever is bound to $PORT, so if the port is never opened because the database
+// is unreachable, the service answers every request with an opaque 404 "Not
+// Found" and there are no logs to explain it. Binding early makes that failure
+// visible and recoverable: /health reports it, the retry loop keeps trying, and
+// the service heals on its own once the cluster is reachable.
+const server = app.listen(PORT, () => {
+  console.log(`[App] ShopKart API listening on port ${PORT} (health check: /health)`);
+});
 
 async function connectWithRetry() {
   try {
     await mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 5000 });
-    console.log(`[DB] Connected to MongoDB at ${MONGO_URI}`);
-
-    // Start HTTP server only after DB is ready
-    if (!server) {
-      server = app.listen(PORT, () => {
-        console.log(`ShopKart auth service running on port ${PORT}`);
-      });
-    }
+    console.log(`[DB] Connected to MongoDB at ${maskCredentials(MONGO_URI)}`);
   } catch (err) {
     // Highly descriptive — tells the dev exactly what to do on Windows
     console.error('\n[DB] MongoDB connection failed:', err.message);
-    console.error('[DB] Reason: Mongoose could not reach MongoDB at', MONGO_URI);
+    console.error('[DB] Reason: Mongoose could not reach MongoDB at', maskCredentials(MONGO_URI));
+    console.error('[DB] Reading that error:');
+    console.error('[DB]   - ESERVFAIL / queryTxt -> the cluster hostname does not exist (typo, or the cluster was deleted)');
+    console.error('[DB]   - "bad auth"          -> username/password wrong, or the password needs URL-encoding');
+    console.error('[DB]   - "Server selection"  -> Atlas Network Access does not allow this host');
     console.error('[DB] Fix (local Windows):');
     console.error('  1. Check if MongoDB is installed:  mongod --version');
     console.error('  2. Check service status:            Get-Service MongoDB  OR  sc query MongoDB');
@@ -94,9 +133,10 @@ async function connectWithRetry() {
     console.error('     Or:  Start-Service MongoDB  (or: mongod --dbpath \"C:\\data\\db\"  for manual run)');
     console.error('  4. Verify:                          mongosh --eval \"db.runCommand({ ping: 1 })\"');
     console.error('[DB] Fix (cloud): use a MongoDB Atlas URI in .env — see README/.env.example');
-    console.error(`[DB] Retrying in ${RETRY_MS / 1000}s... (app stays up, no crash)\n`);
+    console.error(`[DB] Retrying in ${RETRY_MS / 1000}s... (API stays up, /health reports "connecting")\n`);
 
-    // Retry after 5s instead of exiting — keeps the process alive for nodemon / manual fix
+    // Retry after 5s instead of exiting — the process stays available for
+    // nodemon, and a paused Atlas cluster recovers without a redeploy.
     setTimeout(connectWithRetry, RETRY_MS);
   }
 }
