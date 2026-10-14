@@ -1,16 +1,26 @@
-# React + Vite
+# ShopKart — frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The React 19 + Vite SPA for ShopKart. Full setup instructions, the API contract and the
+environment variable reference live in the [root README](../README.md).
 
-Currently, two official plugins are available:
+## Quick reference
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+cd frontend
+npm install
+copy .env.example .env    # macOS / Linux: cp .env.example .env
+npm run dev               # http://localhost:5173
+```
 
-## React Compiler
+| Script | Does |
+| --- | --- |
+| `npm run dev` | Dev server with HMR |
+| `npm run build` | Production build into `dist/` |
+| `npm run preview` | Serve the built output locally |
+| `npm run lint` | Oxlint |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+The API base URL comes from `VITE_API_URL` in `frontend/.env` (default
+`http://localhost:3000`). It must stay absolute — `/products`, `/cart`, `/wishlist` and
+`/orders` are both API paths and React routes, so a relative base URL or a dev proxy
+would make a page navigation return JSON instead of the app shell. Cross-origin access
+is handled by the backend's CORS policy instead. See `backend/index.js`.

@@ -11,21 +11,50 @@ const orderRoutes = require('./routes/order.routes');
 
 const app = express();
 
-// Cross-origin allow-list for the React dev server.
+// Cross-origin policy for the React dev server.
 //
-// 5173 = Vite's default dev port, 5199 = the port this project actually runs on,
-// 3000 = the backend's own origin (useful when the SPA is served from here).
+// Why this needs care: when a browser calls this API from an origin that is NOT
+// allowed, the request still arrives and still returns 200 with the correct JSON
+// — but the response comes back WITHOUT an Access-Control-Allow-Origin header,
+// so the browser refuses to hand it to JavaScript. axios then rejects with a
+// bare "Network Error" (err.response is undefined), Products.jsx shows its
+// generic error state, and Register.jsx reports a failure, while the DevTools
+// Network tab still shows a perfectly successful 200. That mismatch is the
+// symptom to look for.
 //
-// Why this list matters so much: when a browser calls the API from an origin
-// that is NOT listed, the request still reaches this server and still returns
-// 200 with the correct JSON — but the response arrives without an
-// Access-Control-Allow-Origin header, so the browser refuses to hand it to
-// JavaScript. axios then rejects with a bare "Network Error" (err.response is
-// undefined), and a page like Products.jsx shows its generic error state while
-// the DevTools Network tab still displays a perfectly successful 200. Always
-// add the dev port here when the frontend port changes.
+// Hardcoding port numbers here is what made that trap so easy to fall into:
+// Vite silently falls back to 5174, 5175, ... whenever its default port is busy,
+// so a pinned list breaks without any code change. In development we therefore
+// accept ANY port on the loopback host and only fall back to the explicit
+// CORS_ORIGINS list when those are provided. In production the loopback
+// shortcut is disabled and CORS_ORIGINS must list the real frontend host.
+const EXPLICIT_ORIGINS = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+function isAllowedOrigin(origin) {
+  // Same-origin / non-browser clients (curl, Postman) send no Origin header.
+  if (!origin) return true;
+  if (EXPLICIT_ORIGINS.includes(origin)) return true;
+
+  if (process.env.NODE_ENV === 'production') return false;
+
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+  } catch {
+    return false;
+  }
+}
+
+// NOTE the callback signature. When `origin` is a function, cors calls it as
+// fn(requestOrigin, cb) and waits for cb() — the return VALUE is ignored. A
+// plain `origin: isAllowedOrigin` boolean function would leave cb uncalled and
+// every request would hang until it timed out, so the predicate and the
+// callback form must be kept together.
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5199', 'http://localhost:3000'],
+  origin: (origin, cb) => cb(null, isAllowedOrigin(origin)),
   credentials: true,
 }));
 app.use(express.json());
