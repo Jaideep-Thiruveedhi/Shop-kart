@@ -12,7 +12,7 @@ const requireDatabase = require('./middlewares/db.middleware');
 
 const app = express();
 
-// Cross-origin policy for the React dev server.
+// Cross-origin policy for the React frontend.
 //
 // Why this needs care: when a browser calls this API from an origin that is NOT
 // allowed, the request still arrives and still returns 200 with the correct JSON
@@ -23,29 +23,61 @@ const app = express();
 // Network tab still shows a perfectly successful 200. That mismatch is the
 // symptom to look for.
 //
-// Hardcoding port numbers here is what made that trap so easy to fall into:
-// Vite silently falls back to 5174, 5175, ... whenever its default port is busy,
-// so a pinned list breaks without any code change. In development we therefore
-// accept ANY port on the loopback host and only fall back to the explicit
-// CORS_ORIGINS list when those are provided. In production the loopback
+// Hardcoding port numbers in the allow-list is what made that trap so easy to
+// fall into: Vite silently falls back to 5174, 5175, ... whenever its default
+// port is busy, so a pinned list breaks without any code change. In development
+// we therefore accept ANY port on the loopback host and fall back to the
+// explicit CORS_ORIGINS list when one is provided. In production the loopback
 // shortcut is disabled and CORS_ORIGINS must list the real frontend host.
-const EXPLICIT_ORIGINS = (process.env.CORS_ORIGINS || '')
-  .split(',')
-  .map((o) => o.trim())
-  .filter(Boolean);
+//
+// An origin arrives in several shapes: "https://x.com", "https://x.com/", with a
+// trailing comma, or with stray spaces from a copy-pasted env var. The browser
+// only ever sends the canonical `scheme://host[:port]` with NO trailing slash, so
+// every configured value is normalised the same way before comparison. Getting
+// this wrong is invisible in the code and fatal in production: `https://x.com/`
+// never matches `https://x.com`, the browser withholds the response, and the app
+// reports a bare "Network Error".
+function normaliseOrigin(value) {
+  return String(value).trim().replace(/\/+$/, '');
+}
+
+const EXPLICIT_ORIGINS = [...new Set(
+  (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map(normaliseOrigin)
+    .filter(Boolean),
+)];
 
 function isAllowedOrigin(origin) {
-  // Same-origin / non-browser clients (curl, Postman) send no Origin header.
+  // Same-origin / non-browser clients (curl, Postman, server-to-server) send no
+  // Origin header at all, and there is nothing to allow-list against.
   if (!origin) return true;
-  if (EXPLICIT_ORIGINS.includes(origin)) return true;
 
+  const candidate = normaliseOrigin(origin);
+  if (EXPLICIT_ORIGINS.includes(candidate)) return true;
+
+  // In production the loopback shortcut stays OFF: a deployed API must only
+  // answer the origins its operator listed.
   if (process.env.NODE_ENV === 'production') return false;
 
   try {
-    const { hostname } = new URL(origin);
+    const { hostname } = new URL(candidate);
     return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
   } catch {
     return false;
+  }
+}
+
+// Raised when a browser sends an Origin that is not allow-listed. Passing the
+// error to the cors callback makes the rejection explicit (403 + JSON) instead of
+// silently omitting Access-Control-Allow-Origin, which the browser reports as an
+// unexplained "Network Error" with a perfectly healthy 200 in the Network tab.
+class DisallowedOriginError extends Error {
+  constructor(origin) {
+    super(`Origin not allowed: ${origin}`);
+    this.name = 'DisallowedOriginError';
+    this.status = 403;
+    this.origin = origin;
   }
 }
 
@@ -54,9 +86,19 @@ function isAllowedOrigin(origin) {
 // plain `origin: isAllowedOrigin` boolean function would leave cb uncalled and
 // every request would hang until it timed out, so the predicate and the
 // callback form must be kept together.
+//
+// `credentials: true` is required: the JWT rides in a cookie, and without it the
+// browser neither stores nor sends the cookie, so every protected call is a 401.
+// It is also why `Access-Control-Allow-Origin: *` is not an option — the spec
+// forbids a wildcard when credentials are involved.
 app.use(cors({
-  origin: (origin, cb) => cb(null, isAllowedOrigin(origin)),
+  origin: (origin, cb) => {
+    if (isAllowedOrigin(origin)) return cb(null, true);
+    return cb(new DisallowedOriginError(origin));
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
 }));
 app.use(express.json());
 app.use(cookieParser());
@@ -92,6 +134,24 @@ app.use('/products', requireDatabase, productRoutes);
 app.use('/wishlist', requireDatabase, wishlistRoutes);
 app.use('/cart', requireDatabase, cartRoutes);
 app.use('/orders', requireDatabase, orderRoutes);
+
+// Turns a rejected origin into an explicit answer. Without this, cors simply
+// omits the header and the browser reports an opaque "Network Error" — which is
+// indistinguishable from the API being down. Echoing the configured list back is
+// safe: it contains only public frontend hostnames, never a secret, and it tells
+// whoever is debugging exactly what to add to CORS_ORIGINS.
+app.use((err, req, res, next) => {
+  if (err instanceof DisallowedOriginError) {
+    return res.status(403).json({
+      success: false,
+      error: 'origin_not_allowed',
+      message: 'This origin is not allowed to call the ShopKart API. Add it to CORS_ORIGINS on the server (no trailing slash).',
+      rejectedOrigin: err.origin,
+      allowedOrigins: EXPLICIT_ORIGINS,
+    });
+  }
+  return next(err);
+});
 
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/shopkart';
