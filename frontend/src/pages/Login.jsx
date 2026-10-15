@@ -7,11 +7,14 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setUser } = useAuth();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const registered = location.state?.registered;
+  // The address the account was just created with, handed over by Register.
+  // Only the email: retyping it is how a typo turns into a misleading 401.
+  const registeredEmail = location.state?.email ?? '';
+  const [form, setForm] = useState({ email: registeredEmail, password: '' });
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
   const [loading, setLoading] = useState(false);
-  const registered = location.state?.registered;
   // Set by the RequireAuth guard when a protected page bounces the visitor here.
   const redirectTo = location.state?.from ?? '/home';
 

@@ -65,7 +65,15 @@ export default function Register() {
         phone: form.phone.trim(),
       });
       // On success → Redirect to Login page (rubric: Task 1)
-      navigate('/login', { replace: true, state: { registered: true } });
+      // The email travels with the navigation state so the login form starts on
+      // the address the account was actually created with. Without this the user
+      // retypes it, and a single typo/autofill difference looks exactly like a
+      // wrong password — a 401 with no clue as to which side is wrong. The
+      // password is deliberately NOT carried over: it must come from the user.
+      navigate('/login', {
+        replace: true,
+        state: { registered: true, email: form.email.trim().toLowerCase() },
+      });
     } catch (err) {
       const status = err.response?.status;
       const msg = err.response?.data?.message;
